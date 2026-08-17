@@ -7,6 +7,7 @@ namespace FrolovGuru\ScalarSymfony\Tests\Functional;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 
 final class ScalarControllerTest extends TestCase
 {
@@ -27,11 +28,12 @@ final class ScalarControllerTest extends TestCase
     /**
      * @param array<string, mixed> $scalarConfig
      */
-    private function createClient(array $scalarConfig = [], ?bool $authorizationCheckerAllows = null): KernelBrowser
+    private function createClient(array $scalarConfig = [], ?bool $authorizationCheckerAllows = null, bool $withRealSecurity = false): KernelBrowser
     {
         $kernel = new TestKernel(
             array_merge(['url' => '/openapi.yaml'], $scalarConfig),
             $authorizationCheckerAllows,
+            $withRealSecurity,
         );
 
         return $this->client = new KernelBrowser($kernel);
@@ -158,8 +160,49 @@ final class ScalarControllerTest extends TestCase
         $client->request('GET', '/scalar');
     }
 
-    public function testAttributeModeWithoutSecurityReturns500(): void
+    public function testEmptyCdnIsRejected(): void
     {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('cannot contain an empty value');
+
+        $client = $this->createClient(['cdn' => '']);
+        $client->request('GET', '/scalar');
+    }
+
+    public function testEmptyPathIsRejected(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('cannot contain an empty value');
+
+        $client = $this->createClient(['path' => '']);
+        $client->request('GET', '/scalar');
+    }
+
+    public function testPathWithoutLeadingSlashIsRejected(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('must start with a slash');
+
+        $client = $this->createClient(['path' => 'scalar']);
+        $client->request('GET', '/scalar');
+    }
+
+    public function testEmptyAttributeIsRejected(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('cannot contain an empty value');
+
+        $client = $this->createClient([
+            'access_control' => ['mode' => 'attribute', 'attribute' => ''],
+        ]);
+        $client->request('GET', '/scalar');
+    }
+
+    public function testAttributeModeWithoutSecurityFailsAtContainerCompilation(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('requires an enabled "security.authorization_checker" service');
+
         $client = $this->createClient([
             'access_control' => [
                 'mode' => 'attribute',
@@ -167,9 +210,9 @@ final class ScalarControllerTest extends TestCase
             ],
         ]);
 
+        // The misconfiguration must be detected when the container is built
+        // (kernel boot), not surface as an HTTP 500 on the first request.
         $client->request('GET', '/scalar');
-
-        self::assertSame(500, $client->getResponse()->getStatusCode());
     }
 
     public function testUnknownPathReturns404(): void
@@ -203,6 +246,54 @@ final class ScalarControllerTest extends TestCase
             ],
         ], true);
 
+        $client->request('GET', '/scalar');
+
+        self::assertSame(200, $client->getResponse()->getStatusCode());
+    }
+
+    public function testRealSecurityBundleDeniesAnonymousUser(): void
+    {
+        $client = $this->createClient([
+            'access_control' => [
+                'mode' => 'attribute',
+                'attribute' => 'ROLE_API_DOCS',
+            ],
+        ], withRealSecurity: true);
+
+        $client->request('GET', '/scalar');
+
+        self::assertSame(403, $client->getResponse()->getStatusCode());
+    }
+
+    public function testRealSecurityBundleDeniesUserWithoutRequiredRole(): void
+    {
+        $client = $this->createClient([
+            'access_control' => [
+                'mode' => 'attribute',
+                'attribute' => 'ROLE_API_DOCS',
+            ],
+        ], withRealSecurity: true);
+
+        // loginUser() needs a booted container, so boot before the first request.
+        $client->getKernel()->boot();
+        $client->loginUser(new InMemoryUser('admin', 'test', ['ROLE_ADMIN']));
+        $client->request('GET', '/scalar');
+
+        self::assertSame(403, $client->getResponse()->getStatusCode());
+    }
+
+    public function testRealSecurityBundleAllowsUserWithRequiredRole(): void
+    {
+        $client = $this->createClient([
+            'access_control' => [
+                'mode' => 'attribute',
+                'attribute' => 'ROLE_API_DOCS',
+            ],
+        ], withRealSecurity: true);
+
+        // loginUser() needs a booted container, so boot before the first request.
+        $client->getKernel()->boot();
+        $client->loginUser(new InMemoryUser('api-docs', 'test', ['ROLE_API_DOCS']));
         $client->request('GET', '/scalar');
 
         self::assertSame(200, $client->getResponse()->getStatusCode());

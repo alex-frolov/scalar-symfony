@@ -4,13 +4,28 @@ declare(strict_types=1);
 
 namespace FrolovGuru\ScalarSymfony;
 
+use FrolovGuru\ScalarSymfony\DependencyInjection\ValidateAccessControlPass;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
+use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
 final class ScalarSymfonyBundle extends AbstractBundle
 {
+    public function build(ContainerBuilder $container): void
+    {
+        // Priority -2000: runs after the merge pass, where bundle extensions are
+        // loaded (priority -1000 on Symfony 6.4/7.2, first on 8.x), so both the
+        // scalar_symfony.config parameter and the security.authorization_checker
+        // service are known at this point.
+        $container->addCompilerPass(
+            new ValidateAccessControlPass(),
+            PassConfig::TYPE_BEFORE_OPTIMIZATION,
+            -2000,
+        );
+    }
+
     public function configure(DefinitionConfigurator $definition): void
     {
         $definition->import('../config/definition.php');

@@ -66,6 +66,7 @@ jobs:
           composer require --dev --no-update --no-interaction
           "symfony/browser-kit:${{ matrix.symfony }}"
           "symfony/phpunit-bridge:${{ matrix.symfony }}"
+          "symfony/security-bundle:${{ matrix.symfony }}"
           "symfony/security-core:${{ matrix.symfony }}"
 
       - name: Install dependencies
