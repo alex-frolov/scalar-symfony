@@ -46,13 +46,15 @@ jobs:
           key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.symfony }}-${{ matrix.deps || 'latest' }}-${{ hashFiles('composer.json', 'composer.lock') }}
 
       - name: Validate composer.json
-        # --no-check-publish keeps the check purely static: composer 2.8 hits the
-        # GitHub API for the publish check and authenticates with the Actions
-        # GITHUB_TOKEN (ghs_*), which composer rejects as "invalid characters"
-        # (flaky depending on API rate limits). Empty token = same, deterministic.
+        # setup-php writes the Actions GITHUB_TOKEN (ghs_*) into composer's global
+        # auth.json; composer 2.8 rejects that token format ('invalid characters')
+        # whenever its validate path touches GitHub — flaky depending on API state.
+        # Remove the token for this purely static check (--no-check-publish).
         env:
           GITHUB_TOKEN: ''
-        run: composer validate --strict --no-check-publish
+        run: |
+          composer config -g --unset github-oauth.github.com 2>/dev/null || true
+          composer validate --strict --no-check-publish
 
       - name: Constrain Symfony runtime packages
         if: matrix.symfony != 'latest'
