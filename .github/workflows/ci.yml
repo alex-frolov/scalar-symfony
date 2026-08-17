@@ -46,14 +46,17 @@ jobs:
           key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.symfony }}-${{ matrix.deps || 'latest' }}-${{ hashFiles('composer.json', 'composer.lock') }}
 
       - name: Validate composer.json
-        # setup-php writes the Actions GITHUB_TOKEN (ghs_*) into composer's global
-        # auth.json; composer 2.8 rejects that token format ('invalid characters')
-        # whenever its validate path touches GitHub — flaky depending on API state.
-        # Remove the token for this purely static check (--no-check-publish).
+        # setup-php writes the Actions GITHUB_TOKEN (ghs_*) into composer's
+        # auth.json; composer 2.8 rejects that token format ('invalid
+        # characters') on ANY config/validate path that touches it — even
+        # `composer config --unset` crashes. Remove the credential file
+        # directly (ephemeral runner, no other creds to lose) and keep the
+        # check purely static (--no-check-publish).
         env:
           GITHUB_TOKEN: ''
         run: |
-          composer config -g --unset github-oauth.github.com 2>/dev/null || true
+          rm -f "${COMPOSER_HOME:-$HOME/.composer}/auth.json"
+          rm -f "$HOME/.config/composer/auth.json"
           composer validate --strict --no-check-publish
 
       - name: Constrain Symfony runtime packages
