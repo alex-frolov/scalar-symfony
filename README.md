@@ -19,6 +19,15 @@ external URL.
 | Lightweight docs page, one route | — | ✅ one bundle, one route |
 | Symfony 6.4+ | needs upgrade to v5 | ✅ works on 6.4 / 7.2+ / 8.x |
 
+## Live demo (dogfooding)
+
+The bundle powers the API reference of the
+[Tender Platform](https://github.com/alex-frolov/tender) (Symfony 8.1,
+highload auction platform) — a real OpenAPI document served through a single
+route, no other documentation tooling involved:
+
+![Tender Platform API reference rendered with Scalar](docs/assets/tender-scalar-demo.png)
+
 ## Requirements
 
 - PHP >= 8.2
@@ -112,7 +121,7 @@ Practical consequences:
 
 Treat `attribute` as protection of the *page*, not of the *spec*. If the spec must
 stay confidential, protect the document with the same rule (or use a protected
-proxy endpoint — planned, see the PASSPORT TODO).
+proxy endpoint — planned).
 
 ## How it works
 

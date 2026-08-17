@@ -90,7 +90,7 @@ Practical consequences:
 
 Treat `attribute` as protection of the *page*, not of the *spec*. If the spec
 must stay confidential, protect the document with the same rule (or use a
-protected proxy endpoint — planned, see the PASSPORT TODO).
+protected proxy endpoint — planned).
 
 ## How it works
 
