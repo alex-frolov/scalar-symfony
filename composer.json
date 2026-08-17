@@ -1,0 +1,58 @@
+{
+    "name": "alex-frolov/scalar-symfony",
+    "description": "Render modern Scalar API References in Symfony from any OpenAPI document",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": ["symfony", "bundle", "scalar", "openapi", "swagger", "api-reference", "api-docs"],
+    "authors": [
+        {
+            "name": "Aleksander Frolov",
+            "email": "aleksander@frolov.guru",
+            "homepage": "https://frolov.guru"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "symfony/config": "^6.4 || ^7.2 || ^8.0",
+        "symfony/dependency-injection": "^6.4 || ^7.2 || ^8.0",
+        "symfony/framework-bundle": "^6.4 || ^7.2 || ^8.0",
+        "symfony/http-foundation": "^6.4 || ^7.2 || ^8.0",
+        "symfony/http-kernel": "^6.4 || ^7.2 || ^8.0",
+        "symfony/routing": "^6.4 || ^7.2 || ^8.0",
+        "symfony/twig-bundle": "^6.4 || ^7.2 || ^8.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^10.5 || ^11.5",
+        "symfony/browser-kit": "^6.4 || ^7.2 || ^8.0",
+        "symfony/phpunit-bridge": "^6.4 || ^7.2 || ^8.0",
+        "symfony/security-core": "^6.4 || ^7.2 || ^8.0"
+    },
+    "suggest": {
+        "symfony/security-core": "Required for the attribute-based access control mode"
+    },
+    "autoload": {
+        "psr-4": {
+            "FrolovGuru\\ScalarSymfony\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FrolovGuru\\ScalarSymfony\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "fix": "php-cs-fixer fix --allow-risky=yes"
+    }
+}

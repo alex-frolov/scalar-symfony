@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  SYMFONY_DEPRECATIONS_HELPER: 'max[direct]=0'
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} / Symfony ${{ matrix.symfony }}${{ matrix.deps == 'lowest' && ' / prefer-lowest' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            symfony: '6.4.*'
+            deps: 'lowest'
+          - php: '8.2'
+            symfony: '7.2.*'
+          - php: '8.3'
+            symfony: '7.4.*'
+          - php: '8.5'
+            symfony: '8.0.*'
+          - php: '8.5'
+            symfony: 'latest'
+    steps:
+      # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup PHP
+        # v2.35.5
+        uses: shivammathur/setup-php@bf6b4fbd49ca58e4608c9c89fba0b8d90bd2a39f
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:2.8.12
+
+      - name: Cache Composer packages
+        # v4.2.4
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ matrix.symfony }}-${{ matrix.deps || 'latest' }}-${{ hashFiles('composer.json', 'composer.lock') }}
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Constrain Symfony runtime packages
+        if: matrix.symfony != 'latest'
+        run: >
+          composer require --no-update --no-interaction
+          "symfony/config:${{ matrix.symfony }}"
+          "symfony/dependency-injection:${{ matrix.symfony }}"
+          "symfony/framework-bundle:${{ matrix.symfony }}"
+          "symfony/http-foundation:${{ matrix.symfony }}"
+          "symfony/http-kernel:${{ matrix.symfony }}"
+          "symfony/routing:${{ matrix.symfony }}"
+          "symfony/twig-bundle:${{ matrix.symfony }}"
+
+      - name: Constrain Symfony development packages
+        if: matrix.symfony != 'latest'
+        run: >
+          composer require --dev --no-update --no-interaction
+          "symfony/browser-kit:${{ matrix.symfony }}"
+          "symfony/phpunit-bridge:${{ matrix.symfony }}"
+          "symfony/security-core:${{ matrix.symfony }}"
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.deps == 'lowest' && '--prefer-lowest' || '' }}
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: PHP-CS-Fixer (dry run)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: No-dev smoke test
+        run: |
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+          cp -a . "$smoke_dir/app"
+          rm -rf "$smoke_dir/app/vendor" "$smoke_dir/app/.phpunit.cache" "$smoke_dir/app/.php-cs-fixer.cache"
+          (
+            cd "$smoke_dir/app"
+            composer install --no-dev --no-interaction --prefer-dist --no-progress
+            php tests/Smoke/no-dev.php
+          )
